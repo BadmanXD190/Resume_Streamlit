@@ -8,7 +8,20 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------- Helper styles ----------
+# ---------- Helper: locate resume PDF or URL ----------
+def get_resume_bytes_or_url():
+    # Prefer a local PDF in assets/ or project root
+    candidates = [Path("assets/resume.pdf"), Path("resume.pdf")]
+    for p in candidates:
+        if p.exists() and p.is_file():
+            return p.read_bytes(), None
+    # Fallback to URL provided via Streamlit secrets (set RESUME_URL in app settings)
+    resume_url = st.secrets.get("RESUME_URL") if hasattr(st, "secrets") else None
+    if resume_url:
+        return None, str(resume_url)
+    return None, None
+
+# ---------- Styles ----------
 st.markdown(
     """
     <style>
@@ -42,15 +55,25 @@ with st.container():
     with left:
         st.markdown('<div class="hero">', unsafe_allow_html=True)
         st.title("Ng Poh Siang")
-        st.markdown('<div class="hero-sub muted">Information Technology student majoring in Artificial Intelligence. Passionate about using AI to solve real-world problems.</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="hero-sub muted">Information Technology student majoring in Artificial Intelligence. '
+            'Passionate about using AI to solve real-world problems.</div>',
+            unsafe_allow_html=True
+        )
 
-        c1, c2, c3 = st.columns([1.2,1,1.4])
+        resume_bytes, resume_url = get_resume_bytes_or_url()
+        c1, c2, c3 = st.columns([1.2,1,1.6])
         with c1:
             st.link_button("🔗 LinkedIn", "https://www.linkedin.com/in/ng-poh-siang-19b339253")
         with c2:
             st.link_button("✉️ Email", "mailto:ngpohsiang0955@gmail.com")
         with c3:
-            st.download_button('📄 Download Resume', data=Path('/mnt/data/NG POH SIANG (5).pdf').read_bytes(), file_name='Ng_Poh_Siang_Resume.pdf')
+            if resume_bytes:
+                st.download_button("📄 Download Resume", data=resume_bytes, file_name="Ng_Poh_Siang_Resume.pdf")
+            elif resume_url:
+                st.link_button("📄 View Resume", resume_url)
+            else:
+                st.caption("To enable a resume button, add assets/resume.pdf or set RESUME_URL in Secrets.")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with right:
@@ -62,7 +85,7 @@ with st.container():
         with m2:
             st.metric("MUET", "Band 4")
         st.write("📍 Johor Bahru, Malaysia")
-        st.write("📱 010‑394 4463")
+        st.write("📱 010-394 4463")
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.divider()

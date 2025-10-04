@@ -1,17 +1,26 @@
 
 import streamlit as st
 from pathlib import Path
+from base64 import b64encode
 
 st.set_page_config(
-    page_title="Ng Poh Siang - Portfolio Resume",
+    page_title="Ng Poh Siang — Portfolio Resume",
     page_icon="🧭",
     layout="wide"
 )
 
-# ---------- Helper: locate resume PDF or URL ----------
+# -------------------- Sidebar: Theme and Accent --------------------
+st.sidebar.header("Appearance")
+theme = st.sidebar.radio("Theme", ["Light", "Dark"], index=0, horizontal=True)
+accent = st.sidebar.selectbox("Accent", ["UMK Blue", "Royal Purple", "Emerald", "Sunset Orange"], index=0)
+
+ACCENTS = {"UMK Blue":"#006ccd","Royal Purple":"#6f42c1","Emerald":"#2ecc71","Sunset Orange":"#ff7a00"}
+accent_hex = ACCENTS.get(accent, "#006ccd")
+is_dark = theme == "Dark"
+
+# -------------------- Helper: resume + profile --------------------
 def get_resume_bytes_or_url():
-    candidates = [Path("assets/resume.pdf"), Path("resume.pdf")]
-    for p in candidates:
+    for p in [Path("assets/resume.pdf"), Path("resume.pdf")]:
         if p.exists() and p.is_file():
             return p.read_bytes(), None
     resume_url = st.secrets.get("RESUME_URL") if hasattr(st, "secrets") else None
@@ -19,313 +28,217 @@ def get_resume_bytes_or_url():
         return None, str(resume_url)
     return None, None
 
-# ---------- Styles ----------
-st.markdown(
-    """
-    <style>
-    .pill {
-        display:inline-block; padding:6px 10px; border-radius:999px;
-        border:1px solid rgba(120,120,120,.25); margin:4px 6px 0 0;
-        font-size:0.90rem
-    }
-    .section-title {
-        font-weight:700; font-size:1.25rem; margin: 0.5rem 0 0.75rem 0;
-    }
-    .card {
-        border:1px solid rgba(120,120,120,.25);
-        border-radius:16px; padding:1rem; margin-bottom:0.75rem;
-        background: rgba(250,250,250,.6);
-    }
-    .muted { color: #6c757d; }
-    .hero h1 { margin-bottom: .25rem; }
-    .hero-sub { font-size: 1.05rem; }
-    .metricbox {
-        border-radius: 14px; padding:.75rem 1rem; border:1px solid rgba(120,120,120,.2);
-    }
-    .grid-2 { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-3 { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    @media (max-width: 900px) {
-        .grid-2, .grid-3 { grid-template-columns: 1fr; }
-    }
-    </style>
-    """
-    , unsafe_allow_html=True
-)
+def get_profile_bytes():
+    for name in ["assets/profile.jpg","assets/profile.png","profile.jpg","profile.png"]:
+        p = Path(name)
+        if p.exists() and p.is_file():
+            return p.read_bytes()
+    return None
 
-# ---------- Hero ----------
+# -------------------- Styles --------------------
+bg = "#0f1116" if is_dark else "#f8fafc"
+surface = "#161a22" if is_dark else "#ffffff"
+muted = "#a7b0bd" if is_dark else "#6c757d"
+text = "#e6e9ef" if is_dark else "#1f2937"
+border = "rgba(255,255,255,.12)" if is_dark else "rgba(120,120,120,.25)"
+
+css = f"""
+<style>
+#MainMenu {{visibility:hidden;}}
+footer {{visibility:hidden;}}
+:root {{
+  --bg: {bg}; --surface: {surface}; --muted: {muted}; --text: {text}; --border: {border}; --accent: {accent_hex};
+}}
+.main, .block-container {{ background: var(--bg); }}
+.block-container {{ padding-top: 1.2rem; }}
+h1,h2,h3,h4,h5,p,span,li,div,small {{ color: var(--text); }}
+.section-title {{ font-weight: 800; font-size: 1.25rem; margin: .25rem 0 .75rem; letter-spacing:.2px; }}
+.pill {{ display:inline-block; padding:7px 11px; border-radius:999px; border:1px solid var(--border); margin:4px 6px 0 0; font-size:.92rem; background:transparent; }}
+.card {{ border:1px solid var(--border); border-radius:18px; padding:1rem; margin-bottom:.9rem; background: var(--surface); }}
+.card-accent {{ border-left: 5px solid var(--accent); }}
+.hero {{ border-radius: 18px; padding: 1.25rem 1.25rem; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), var(--surface)); border: 1px solid var(--border); margin-bottom: .75rem; }}
+.hero h1 {{ margin: 0; }}
+.hero-sub {{ color: var(--muted); font-size: 1.05rem; margin-top: .35rem; }}
+.badge {{ display:inline-block; padding:.35rem .6rem; border-radius:8px; border:1px solid var(--border); margin-right:.35rem; }}
+.metricbox {{ border-radius: 14px; padding:.9rem 1rem; border:1px solid var(--border); background: var(--surface); }}
+.btn-row .stButton>button, .stLinkButton>button {{ border-radius: 999px; padding:.5rem .9rem; border:1px solid var(--border); }}
+.grid-2 {{ display:grid; gap:14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+.grid-3 {{ display:grid; gap:14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }}
+@media (max-width: 900px) {{ .grid-2, .grid-3 {{ grid-template-columns: 1fr; }} }}
+.profile {{ width: 110px; height:110px; border-radius:999px; border:2px solid var(--border); object-fit:cover; }}
+.avatar {{ display:flex; align-items:center; justify-content:center; width:110px; height:110px; border-radius:999px; border:2px solid var(--border); background:var(--surface); font-size:2.2rem; }}
+.muted {{ color: var(--muted); }}
+hr {{ border:none; border-top:1px solid var(--border); margin:1rem 0; }}
+</style>
+"""
+st.markdown(css, unsafe_allow_html=True)
+
+# -------------------- Hero --------------------
 with st.container():
-    left, right = st.columns([3, 1])
-    with left:
+    l, r = st.columns([3, 1], gap="large")
+    with l:
         st.markdown('<div class="hero">', unsafe_allow_html=True)
-        st.title("Ng Poh Siang")
-        st.markdown(
-            '<div class="hero-sub muted">AI and IoT enthusiast - IT undergraduate - Sustainable tech innovator</div>',
-            unsafe_allow_html=True
-        )
-
-        resume_bytes, resume_url = get_resume_bytes_or_url()
-        c1, c2, c3, c4 = st.columns([1.1,1,1,1.4])
-        with c1:
-            st.link_button("LinkedIn", "https://www.linkedin.com/in/ng-poh-siang-19b339253")
-        with c2:
-            st.link_button("GitHub", "https://github.com/")
-        with c3:
-            st.link_button("Email", "mailto:ngpohsiang0955@gmail.com")
-        with c4:
-            if resume_bytes:
-                st.download_button("Download Resume", data=resume_bytes, file_name="Ng_Poh_Siang_Resume.pdf")
-            elif resume_url:
-                st.link_button("View Resume", resume_url)
+        a1, a2 = st.columns([1, 3], vertical_alignment="center")
+        with a1:
+            pb = get_profile_bytes()
+            if pb:
+                st.markdown(f'<img class="profile" src="data:image/png;base64,{b64encode(pb).decode()}">', unsafe_allow_html=True)
             else:
-                st.caption("Add assets/resume.pdf or set RESUME_URL in Secrets to enable resume button.")
+                st.markdown('<div class="avatar">NP</div>', unsafe_allow_html=True)
+        with a2:
+            st.header("Ng Poh Siang")
+            st.markdown('<div class="hero-sub">AI & IoT enthusiast. IT undergraduate. Sustainable tech innovator.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+            c1, c2, c3, c4 = st.columns([1.1,1,1,1.4])
+            with c1: st.link_button("LinkedIn", "https://www.linkedin.com/in/ng-poh-siang-19b339253")
+            with c2: st.link_button("GitHub", "https://github.com/BadmanXD190")
+            with c3: st.link_button("Email", "mailto:ngpohsiang0955@gmail.com")
+            with c4:
+                resume_bytes, resume_url = get_resume_bytes_or_url()
+                if resume_bytes: st.download_button("Download Resume", data=resume_bytes, file_name="Ng_Poh_Siang_Resume.pdf")
+                elif resume_url: st.link_button("View Resume", resume_url)
+                else: st.caption("Add assets/resume.pdf or set RESUME_URL in Secrets to enable resume button.")
+            st.markdown('</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-
-    with right:
+    with r:
         st.markdown('<div class="metricbox">', unsafe_allow_html=True)
         st.caption("At a glance")
         m1, m2 = st.columns(2)
-        with m1:
-            st.metric("CGPA", "3.99")
-        with m2:
-            st.metric("Awards", "3+")
-        mc1, mc2 = st.columns(2)
-        with mc1:
-            st.metric("Projects", "10+")
-        with mc2:
-            st.metric("Certs", "5+")
-        st.write("Johor Bahru, Malaysia")
-        st.write("010-394 4463")
+        with m1: st.metric("CGPA", "3.99")
+        with m2: st.metric("Awards", "3+")
+        m3, m4 = st.columns(2)
+        with m3: st.metric("Projects", "10+")
+        with m4: st.metric("Certs", "5+")
+        st.markdown('<hr/>', unsafe_allow_html=True)
+        st.write("📍 Johor Bahru, Malaysia")
+        st.write("📱 010-394 4463")
         st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Summary ----------
+# -------------------- Summary --------------------
 st.markdown('<div class="section-title">Professional Summary</div>', unsafe_allow_html=True)
 st.write(
     "Motivated IT student specializing in Artificial Intelligence with strong foundations in machine learning, data analysis and mobile development. "
     "Comfortable building end-to-end solutions that combine Flutter front ends, Firebase back ends and data-driven logic. "
-    "Experienced in innovation competitions with multiple awards. Keen to contribute to projects with real impact."
+    "Experienced in innovation competitions with multiple awards and leadership roles. Keen to contribute to projects with real impact."
 )
 
-# ---------- Skills ----------
+# -------------------- Skills --------------------
 st.markdown('<div class="section-title">Skills</div>', unsafe_allow_html=True)
-col1, col2, col3 = st.columns(3)
-with col1:
+sk1, sk2, sk3 = st.columns(3)
+with sk1:
     st.caption("Programming")
-    st.markdown(" ".join([
-        '<span class="pill">Python</span>',
-        '<span class="pill">Java</span>',
-        '<span class="pill">Flutter</span>',
-        '<span class="pill">Dart</span>',
-        '<span class="pill">SQL</span>',
-    ]), unsafe_allow_html=True)
+    st.markdown(" ".join(['<span class="pill">Python</span>','<span class="pill">Java</span>','<span class="pill">Flutter</span>','<span class="pill">Dart</span>','<span class="pill">SQL</span>']), unsafe_allow_html=True)
     st.caption("Tools")
-    st.markdown(" ".join([
-        '<span class="pill">Git</span>',
-        '<span class="pill">Android Studio</span>',
-        '<span class="pill">VS Code</span>',
-        '<span class="pill">Figma</span>',
-        '<span class="pill">Canva</span>',
-        '<span class="pill">CapCut</span>',
-    ]), unsafe_allow_html=True)
-
-with col2:
-    st.caption("AI and Data")
-    st.markdown(" ".join([
-        '<span class="pill">Machine Learning</span>',
-        '<span class="pill">Data Analysis</span>',
-        '<span class="pill">Forecasting</span>',
-        '<span class="pill">Computer Vision</span>',
-        '<span class="pill">Model Evaluation</span>',
-    ]), unsafe_allow_html=True)
-    st.caption("Cloud and Backend")
-    st.markdown(" ".join([
-        '<span class="pill">Firebase Auth</span>',
-        '<span class="pill">Firestore</span>',
-        '<span class="pill">Realtime Database</span>',
-        '<span class="pill">Google APIs</span>',
-    ]), unsafe_allow_html=True)
-
-with col3:
-    st.caption("IoT and Hardware")
-    st.markdown(" ".join([
-        '<span class="pill">Arduino</span>',
-        '<span class="pill">ESP32</span>',
-        '<span class="pill">Sensors</span>',
-        '<span class="pill">Actuators</span>',
-    ]), unsafe_allow_html=True)
+    st.markdown(" ".join(['<span class="pill">Git</span>','<span class="pill">Android Studio</span>','<span class="pill">VS Code</span>','<span class="pill">Figma</span>','<span class="pill">Canva</span>','<span class="pill">CapCut</span>']), unsafe_allow_html=True)
+with sk2:
+    st.caption("AI & Data")
+    st.markdown(" ".join(['<span class="pill">Machine Learning</span>','<span class="pill">Data Analysis</span>','<span class="pill">Forecasting</span>','<span class="pill">Computer Vision</span>','<span class="pill">Model Evaluation</span>']), unsafe_allow_html=True)
+    st.caption("Cloud & Backend")
+    st.markdown(" ".join(['<span class="pill">Firebase Auth</span>','<span class="pill">Firestore</span>','<span class="pill">Realtime DB</span>','<span class="pill">Google APIs</span>']), unsafe_allow_html=True)
+with sk3:
+    st.caption("IoT & Hardware")
+    st.markdown(" ".join(['<span class="pill">Arduino</span>','<span class="pill">ESP32</span>','<span class="pill">Sensors</span>','<span class="pill">Actuators</span>']), unsafe_allow_html=True)
     st.caption("Soft Skills")
-    st.markdown(" ".join([
-        '<span class="pill">Leadership</span>',
-        '<span class="pill">Public Speaking</span>',
-        '<span class="pill">Teamwork</span>',
-        '<span class="pill">Problem Solving</span>',
-    ]), unsafe_allow_html=True)
+    st.markdown(" ".join(['<span class="pill">Leadership</span>','<span class="pill">Public Speaking</span>','<span class="pill">Teamwork</span>','<span class="pill">Problem Solving</span>']), unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Projects (Cards) ----------
+# -------------------- Projects (Cards) --------------------
 st.markdown('<div class="section-title">Projects</div>', unsafe_allow_html=True)
-
 st.markdown('<div class="grid-2">', unsafe_allow_html=True)
 
-st.markdown('''
-<div class="card">
-  <h4>Wasteless - Food Waste Reduction App</h4>
-  <p class="muted">Cross platform mobile app</p>
-  <ul>
-    <li>Connects users with restaurants offering surplus food at discounted prices.</li>
-    <li>Built with Flutter and Firebase for auth, browsing, notifications and orders.</li>
-    <li>Focus on impact through reduced food wastage and budget friendly meals.</li>
-  </ul>
-</div>
-''', unsafe_allow_html=True)
+def card(title, subtitle, points):
+    items = "".join([f"<li>{p}</li>" for p in points])
+    st.markdown(f'''<div class="card card-accent"><h4>{title}</h4><p class="muted">{subtitle}</p><ul>{items}</ul></div>''', unsafe_allow_html=True)
 
-st.markdown('''
-<div class="card">
-  <h4>NestWorks - Automated Poultry Management</h4>
-  <p class="muted">IoT system</p>
-  <ul>
-    <li>Smart feeding silo using load cells, motors and Firebase dashboard.</li>
-    <li>Tracks feed levels and poultry weight automatically to reduce waste.</li>
-    <li>Aligned with UMK entrepreneurial programs.</li>
-  </ul>
-</div>
-''', unsafe_allow_html=True)
-
-st.markdown('''
-<div class="card">
-  <h4>EcoWatch - AI Water Quality Monitoring</h4>
-  <p class="muted">ML + IoT + dashboard</p>
-  <ul>
-    <li>Predicts Water Quality Index using pH, turbidity and TDS sensors.</li>
-    <li>Provides real time monitoring and forecasting dashboards.</li>
-    <li>Represented UMK in Huawei ICT competition.</li>
-  </ul>
-</div>
-''', unsafe_allow_html=True)
-
-st.markdown('''
-<div class="card">
-  <h4>Rebooted - Digital Habit Reset and Tasks</h4>
-  <p class="muted">FYP mobile app</p>
-  <ul>
-    <li>Screen time tracking, app blocking and reward system for better habits.</li>
-    <li>Task breakdown and progress tracking flow.</li>
-    <li>Built with FlutterFlow and Firebase.</li>
-  </ul>
-</div>
-''', unsafe_allow_html=True)
-
-st.markdown('''
-<div class="card">
-  <h4>PlayMasjid - Smart Prayer Companion</h4>
-  <p class="muted">Android app</p>
-  <ul>
-    <li>Prayer times homepage, Qibla, Al Quran audio and nearby mosque finder.</li>
-    <li>Uses geolocation and public APIs where available.</li>
-    <li>Designed for clarity and reliability on mobile devices.</li>
-  </ul>
-</div>
-''', unsafe_allow_html=True)
-
+card("Wasteless — Food Waste Reduction App", "Cross platform mobile app", [
+    "Connects users with restaurants offering surplus food at discounted prices.",
+    "Built with Flutter and Firebase for auth, browsing, notifications and orders.",
+    "Focus on measurable impact by reducing food wastage."
+])
+card("NestWorks — Automated Poultry Management", "IoT system", [
+    "Smart feeding silo with load cells, motors and Firebase dashboard.",
+    "Tracks feed levels and poultry weight to reduce waste and improve yield.",
+    "Aligned with UMK entrepreneurial programs."
+])
+card("EcoWatch — AI Water Quality Monitoring", "ML + IoT + dashboard", [
+    "Predicts Water Quality Index using pH, turbidity and TDS sensors.",
+    "Provides real time monitoring and forecasting dashboards.",
+    "Represented UMK in Huawei ICT competition."
+])
+card("Rebooted — Digital Habit Reset and Tasks", "FYP mobile app", [
+    "Screen time tracking, app blocking and reward system for better habits.",
+    "Task breakdown and progress tracking flow.",
+    "Built with FlutterFlow and Firebase."
+])
+card("PlayMasjid — Smart Prayer Companion", "Android app", [
+    "Prayer times homepage, Qibla, Al-Qur’an audio and nearby mosque finder.",
+    "Uses geolocation and public APIs where available.",
+    "Designed for reliable mobile UX."
+])
 st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Experience and Leadership (Cards) ----------
-st.markdown('<div class="section-title">Experience and Leadership</div>', unsafe_allow_html=True)
-st.markdown('''
-<div class="grid-2">
-  <div class="card">
-    <h4>Innovation and Entrepreneurship</h4>
-    <ul>
-      <li>Competed in Huawei ICT, MRANTI Future Mobility, Lion's Lair and Trailblazer Cup at FSDK.</li>
-      <li>Led and coordinated project teams across AI, IoT and app development tracks.</li>
-      <li>Delivered pitches, demos and documentation aligned to judging rubrics.</li>
-    </ul>
-  </div>
-  <div class="card">
-    <h4>Student Projects and Collaboration</h4>
-    <ul>
-      <li>Worked on ML projects like breast cancer detection and FBMKLCI forecasting.</li>
-      <li>Practiced Agile with Scrum, including sprint planning and Gantt timelines.</li>
-      <li>Built dashboards and prototypes with Firebase and Streamlit.</li>
-    </ul>
-  </div>
-</div>
-''', unsafe_allow_html=True)
+# -------------------- Experience & Leadership --------------------
+st.markdown('<div class="section-title">Experience & Leadership</div>', unsafe_allow_html=True)
+st.markdown('<div class="grid-2">', unsafe_allow_html=True)
+card("Innovation & Entrepreneurship", "Competitions & showcases", [
+    "Huawei ICT, MRANTI Future Mobility, Lion’s Lair and Trailblazer Cup at FSDK.",
+    "Led and coordinated teams across AI, IoT and app development tracks.",
+    "Delivered pitches, demos and documentation aligned with judging rubrics."
+])
+card("Student Projects & Collaboration", "Team-based delivery", [
+    "ML projects including breast cancer detection and FBMKLCI forecasting.",
+    "Agile with Scrum, sprint planning and Gantt timelines.",
+    "Built dashboards and prototypes with Firebase and Streamlit."
+])
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Education (Cards) ----------
+# -------------------- Education --------------------
 st.markdown('<div class="section-title">Education</div>', unsafe_allow_html=True)
-st.markdown('''
-<div class="grid-2">
-  <div class="card">
-    <h4>Universiti Malaysia Kelantan - Bachelor of Information Technology, Artificial Intelligence</h4>
-    <p class="muted">Sept 2022 - Sept 2026</p>
-    <p>Current CGPA 3.99</p>
-  </div>
-  <div class="card">
-    <h4>SMK Taman Johor Jaya 1 - STPM</h4>
-    <p class="muted">Jan 2020 - Jul 2022</p>
-    <p>CGPA 3.67, MUET Band 4</p>
-  </div>
-</div>
-''', unsafe_allow_html=True)
+st.markdown('<div class="grid-2">', unsafe_allow_html=True)
+card("Universiti Malaysia Kelantan", "Bachelor of Information Technology (AI) — Sept 2022 to Sept 2026", ["Current CGPA 3.99."])
+card("SMK Taman Johor Jaya 1", "STPM — Jan 2020 to Jul 2022", ["CGPA 3.67, MUET Band 4."])
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Certifications (Cards) ----------
+# -------------------- Certifications --------------------
 st.markdown('<div class="section-title">Certifications</div>', unsafe_allow_html=True)
-st.markdown('''
-<div class="grid-2">
-  <div class="card">
-    <ul>
-      <li>Microsoft Certified Power BI Data Analyst Associate</li>
-      <li>Microsoft Certified Azure AI Engineer Associate</li>
-    </ul>
-  </div>
-  <div class="card">
-    <ul>
-      <li>Microsoft Certified Azure AI Fundamentals</li>
-      <li>Huawei HCIA Security</li>
-    </ul>
-  </div>
-</div>
-''', unsafe_allow_html=True)
+st.markdown('<div class="grid-2">', unsafe_allow_html=True)
+card("Microsoft Certifications", "Power BI Data Analyst Associate; Azure AI Engineer Associate", [])
+card("More Certifications", "Azure AI Fundamentals; Huawei HCIA Security", [])
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Awards (Cards) ----------
+# -------------------- Awards --------------------
 st.markdown('<div class="section-title">Awards</div>', unsafe_allow_html=True)
-st.markdown('''
-<div class="grid-2">
-  <div class="card">
-    <ul>
-      <li>Gold medal - International Research and Information Science Expo 2025 for Wasteless</li>
-      <li>Silver medal - Virtual Innovation Competition 2024 for Wasteless</li>
-    </ul>
-  </div>
-  <div class="card">
-    <ul>
-      <li>Third place - Sidang Inovasi Belia Peringkat Kebangsaan 2023</li>
-      <li>Represented UMK at Trailblazer Cup at FSDK 2025</li>
-    </ul>
-  </div>
-</div>
-''', unsafe_allow_html=True)
+st.markdown('<div class="grid-2">', unsafe_allow_html=True)
+card("Major Awards", "Highlights", [
+    "🥇 Gold — International Research and Information Science Expo 2025 (Wasteless).",
+    "🥈 Silver — Virtual Innovation Competition 2024 (Wasteless)."
+])
+card("More Achievements", "Leadership & representation", [
+    "🥉 Third Place — Sidang Inovasi Belia Peringkat Kebangsaan 2023.",
+    "Represented UMK at Trailblazer Cup @ FSDK 2025."
+])
+st.markdown('</div>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown('<hr/>', unsafe_allow_html=True)
 
-# ---------- Languages and Hobbies ----------
+# -------------------- Languages & Hobbies --------------------
 st.markdown('<div class="section-title">Languages</div>', unsafe_allow_html=True)
 st.markdown(" ".join([
-    '<span class="pill">Mandarin - Native</span>',
-    '<span class="pill">English - Fluent</span>',
-    '<span class="pill">Malay - Fluent</span>',
-    '<span class="pill">Japanese - Basic</span>',
+    '<span class="pill">Mandarin — Native</span>',
+    '<span class="pill">English — Fluent</span>',
+    '<span class="pill">Malay — Fluent</span>',
+    '<span class="pill">Japanese — Basic</span>',
 ]), unsafe_allow_html=True)
 
 st.markdown('<div class="section-title">Hobbies</div>', unsafe_allow_html=True)
@@ -333,10 +246,7 @@ st.markdown(" ".join([
     '<span class="pill">Coding</span>',
     '<span class="pill">Gaming</span>',
     '<span class="pill">Digital Content Creation</span>',
-    '<span class="pill">Japanese Language and Culture</span>',
+    '<span class="pill">Japanese Language & Culture</span>',
 ]), unsafe_allow_html=True)
 
-st.divider()
-
-# ---------- Footer ----------
 st.caption("© 2025  Ng Poh Siang")
